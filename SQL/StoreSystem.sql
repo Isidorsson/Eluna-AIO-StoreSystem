@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS `store_currencies` (
 INSERT INTO `store_currencies` (`id`, `type`, `name`, `icon`, `data`, `tooltip`) VALUES
 	(1, 1, 'Gold', 'Gold', 0, 'This is normal gold.'),
 	(2, 2, 'Item Token', 'Token', 4540, 'This is an item currency.');
-
+    (3, 1, 'Vote Points', 'Token', 0, 'This is a vote currency.');
+    (3, 1, 'Donation Points', 'Token', 0, 'This is a donation currency.');
 -- Dumping structure for table store.store_logs
 CREATE TABLE IF NOT EXISTS `store_logs` (
   `account` int DEFAULT NULL,
