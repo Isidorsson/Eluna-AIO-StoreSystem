@@ -113,6 +113,7 @@ SHOP_UI = {
 		maxPages = 1,
 		accountRank = 0,
 		["playerCurrencies"] = {},
+		skipPurchaseConfirm = false, -- New global setting
 	},
 	["Data"] = {
 		nav = {},
@@ -146,6 +147,18 @@ function SHOP_UI.MainFrame_Create()
 	shopFrame.Title:SetPoint("TOP", shopFrame, "TOP", 0, -3)
 	shopFrame.Title:SetText("|cffedd100Shop|r")
 
+	-- Options Button
+	shopFrame.optionsButton = CreateFrame("Button", nil, shopFrame, "UIPanelButtonTemplate")
+	shopFrame.optionsButton:SetSize(100, 20)
+	shopFrame.optionsButton:SetPoint("TOPLEFT", shopFrame, "TOPLEFT", 10, -30)
+	shopFrame.optionsButton.ButtonText = shopFrame.optionsButton:CreateFontString()
+	shopFrame.optionsButton.ButtonText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+	shopFrame.optionsButton.ButtonText:SetPoint("CENTER", shopFrame.optionsButton, "CENTER")
+	shopFrame.optionsButton.ButtonText:SetText("Options")
+
+	shopFrame.optionsButton:SetScript("OnClick", function()
+		SHOP_UI.OptionsFrame_Toggle()
+	end)
 	-- create navigation button placeholders, pass parent as arg
 	SHOP_UI.NavButtons_Create(shopFrame)
 
@@ -445,12 +458,13 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		service.buyButton.ButtonText:SetText("Buy now!")
 
 		service.buyButton:SetScript("OnClick", function(self)
-			-- if ctrl + left click, then skip the confirmation dialog and just buy the service else show the confirmation dialog
-			if IsControlKeyDown() then
+			-- Check if skip confirmation is enabled globally or if ctrl key is held
+			if SHOP_UI["Vars"].skipPurchaseConfirm or IsControlKeyDown() then
 				AIO.Handle("STORE_SERVER", "Purchase", self:GetParent().ServiceId)
 				return
 			end
-			local dialog = StaticPopup_Show("CONFIRM_STORE_PURCHASE", self:GetParent().Name) -- dialog contains the frame object
+
+			local dialog = StaticPopup_Show("CONFIRM_STORE_PURCHASE", self:GetParent().Name)
 			if dialog then
 				dialog.data = self:GetParent().ServiceId
 			end
@@ -1116,6 +1130,98 @@ local function ModifyGameMenuFrame()
 		HideUIPanel(frame)
 		MainFrame_Toggle()
 	end)
+end
+
+-- Create Options Frame
+function SHOP_UI.OptionsFrame_Create()
+	if SHOP_UI["OPTIONS_FRAME"] then
+		return
+	end
+
+	local optionsFrame = CreateFrame("Frame", nil, UIParent)
+	local optionsFrameWidth, optionsFrameHeight = 400, 300
+	optionsFrame:SetSize(optionsFrameWidth, optionsFrameHeight)
+	optionsFrame:SetPoint("CENTER", 0, 100)
+	optionsFrame:SetFrameStrata("DIALOG")
+	optionsFrame:Hide()
+
+	-- Background
+	optionsFrame:SetBackdrop({
+		bgFile = "Interface/DialogFrame/UI-DialogBox-Background-Dark",
+		edgeFile = "Interface/DialogFrame/UI-DialogBox-Border",
+		tile = true,
+		tileSize = 32,
+		edgeSize = 32,
+		insets = { left = 11, right = 12, top = 12, bottom = 11 },
+	})
+	optionsFrame:SetBackdropColor(0.2, 0.2, 0.2, 0.95)
+
+	-- Title
+	optionsFrame.title = optionsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	optionsFrame.title:SetPoint("TOP", 0, -10)
+	optionsFrame.title:SetText("Shop Options")
+
+	-- Skip confirmation checkbox
+	optionsFrame.skipConfirmCheck = CreateFrame("CheckButton", nil, optionsFrame, "ChatConfigCheckButtonTemplate")
+	optionsFrame.skipConfirmCheck:SetPoint("TOPLEFT", 20, -40)
+	optionsFrame.skipConfirmCheck:SetChecked(SHOP_UI["Vars"].skipPurchaseConfirm)
+	optionsFrame.skipConfirmCheck.text =
+		optionsFrame.skipConfirmCheck:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	optionsFrame.skipConfirmCheck.text:SetPoint("LEFT", optionsFrame.skipConfirmCheck, "RIGHT", 5, 0)
+	optionsFrame.skipConfirmCheck.text:SetText("Skip purchase confirmation")
+
+	-- Description text
+	optionsFrame.description = optionsFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	optionsFrame.description:SetPoint("TOPLEFT", optionsFrame.skipConfirmCheck, "BOTTOMLEFT", 25, -10)
+	optionsFrame.description:SetWidth(optionsFrame:GetWidth() - 40)
+	optionsFrame.description:SetJustifyH("LEFT")
+	optionsFrame.description:SetWordWrap(true)
+	optionsFrame.description:SetTextColor(1, 1, 1, 0.8)
+	optionsFrame.description:SetText(
+		"When enabled, clicking Buy Now will purchase items immediately without showing a confirmation popup. You can also hold Ctrl while clicking to skip confirmation."
+	)
+
+	-- Close button
+	optionsFrame.closeButton = CreateFrame("Button", nil, optionsFrame, "UIPanelCloseButton")
+	optionsFrame.closeButton:SetPoint("TOPRIGHT")
+
+	-- Save settings when checkbox changes
+	optionsFrame.skipConfirmCheck:SetScript("OnClick", function(self)
+		SHOP_UI["Vars"].skipPurchaseConfirm = self:GetChecked()
+		PlaySound("igMainMenuOptionCheckBoxOn")
+	end)
+
+	-- Add frame script to handle escape key
+	optionsFrame:SetScript("OnKeyDown", function(self, key)
+		if key == "ESCAPE" then
+			self:Hide()
+		end
+	end)
+
+	optionsFrame:SetScript("OnShow", function()
+		PlaySound("igMainMenuOpen")
+	end)
+
+	optionsFrame:SetScript("OnHide", function()
+		PlaySound("igMainMenuClose")
+	end)
+
+	-- Enable keyboard input
+	optionsFrame:EnableKeyboard(true)
+
+	SHOP_UI["OPTIONS_FRAME"] = optionsFrame
+end
+
+function SHOP_UI.OptionsFrame_Toggle()
+	if not SHOP_UI["OPTIONS_FRAME"] then
+		SHOP_UI.OptionsFrame_Create()
+	end
+
+	if SHOP_UI["OPTIONS_FRAME"]:IsShown() then
+		SHOP_UI["OPTIONS_FRAME"]:Hide()
+	else
+		SHOP_UI["OPTIONS_FRAME"]:Show()
+	end
 end
 
 -- Start frame creation on load
