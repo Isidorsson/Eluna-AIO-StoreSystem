@@ -48,6 +48,9 @@ local KEYS = GetDataStructKeys()
 local StoreHandler = AIO.AddHandlers("STORE_SERVER", {})
 
 function StoreHandler.FrameData(player)
+	-- Refresh all data from database
+	RefreshStoreData()
+
 	AIO.Handle(
 		player,
 		"STORE_CLIENT",

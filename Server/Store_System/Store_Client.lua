@@ -3,7 +3,7 @@
 -- do so at your own discretion.
 
 local CONFIG = {
-	maxCategories = 11,
+	maxCategories = 999,
 	strings = {
 		categoryAccessDenied = "You do not have access to this category!",
 	},
@@ -68,8 +68,8 @@ local KEYS = {
 	},
 }
 
-local scaleMulti = 0.85
-
+-- local scaleMulti = 0.85
+local scaleMulti = 0.8
 -- Helpers --
 
 local function CoordsToTexCoords(size, xTop, yTop, xBottom, yBottom)
@@ -113,7 +113,7 @@ SHOP_UI = {
 		maxPages = 1,
 		accountRank = 0,
 		["playerCurrencies"] = {},
-		skipPurchaseConfirm = false, -- New global setting
+		skipPurchaseConfirm = false,
 	},
 	["Data"] = {
 		nav = {},
@@ -193,7 +193,13 @@ function SHOP_UI.MainFrame_Create()
 	end)
 
 	shopFrame:SetScript("OnShow", function()
+		-- Request fresh data from server when UI opens
+		AIO.Handle("STORE_SERVER", "FrameData")
 		AIO.Handle("STORE_SERVER", "UpdateCurrencies")
+		-- Update scroll range when frame is shown
+		if SHOP_UI["NAV_SCROLL_FRAME"] then
+			SHOP_UI.UpdateScrollRange()
+		end
 		PlaySound("AuctionWindowOpen", "Master")
 	end)
 
@@ -211,49 +217,143 @@ end
 
 -- create navigation button placeholders
 function SHOP_UI.NavButtons_Create(parent)
-	SHOP_UI["NAV_BUTTONS"] = {}
-	local offset = 0
-	for i = 1, 12 do
-		local navButton = CreateFrame("Button", nil, parent)
+    -- Create scroll frame container
+    local scrollFrame = CreateFrame("ScrollFrame", nil, parent)
+    scrollFrame:SetSize(250 * scaleMulti, 520 * scaleMulti)
+    scrollFrame:SetPoint("LEFT", parent, "LEFT", 14, 0)
 
-		-- default variables
-		navButton.NavId = i
+    -- Store references for later use
+    SHOP_UI["NAV_SCROLL_FRAME"] = scrollFrame
 
-		-- Main button
-		local size = 220
+    -- Create the scroll child frame that will contain the buttons
+    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+    scrollFrame:SetScrollChild(scrollChild)
+    SHOP_UI["NAV_SCROLL_CHILD"] = scrollChild
 
-		navButton:SetSize(size * scaleMulti, (size / 4) * scaleMulti)
-		navButton:SetPoint("LEFT", parent, "LEFT", 14, 195 + offset)
+    -- Initialize buttons table
+    SHOP_UI["NAV_BUTTONS"] = {}
+    local offset = 0
 
-		navButton:SetNormalTexture("Interface/Store_UI/Frames/StoreFrame_Main")
-		navButton:SetHighlightTexture("Interface/Store_UI/Frames/StoreFrame_Main")
-		navButton:GetNormalTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 897, 1023, 960))
-		navButton:GetHighlightTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 960, 1023, 1023))
+    -- Create scroll bar first
+    local scrollbar = CreateFrame("Slider", nil, scrollFrame, "UIPanelScrollBarTemplate")
+    SHOP_UI["NAV_SCROLLBAR"] = scrollbar
 
-		-- Category name
-		navButton.Name = navButton:CreateFontString()
-		navButton.Name:SetFont("Fonts\\FRIZQT__.TTF", 14)
-		navButton.Name:SetShadowOffset(1, -1)
-		navButton.Name:SetPoint("CENTER", navButton, "CENTER", 5, 0)
+    -- Position scrollbar
+    scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", -20, -14)
+    scrollbar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", -20, 12)
+    scrollbar:SetWidth(16)
+    scrollbar:SetAlpha(0.5)
 
-		-- Icon
-		navButton.Icon = navButton:CreateTexture(nil, "BACKGROUND")
-		navButton.Icon:SetSize(31, 31)
-		navButton.Icon:SetPoint("LEFT", navButton, "LEFT", 6, -1)
+    -- Add mouseover show/hide functionality
+    local function ShowScrollbar()
+        scrollbar:SetAlpha(1)
+    end
 
-		-- increment Y coordinate offset
-		offset = offset - 40
+    local function HideScrollbar()
+        scrollbar:SetAlpha(0.5)
+    end
 
-		navButton:SetScript("OnClick", SHOP_UI.NavButtons_OnClick)
+    scrollbar:HookScript("OnEnter", ShowScrollbar)
+    scrollbar:HookScript("OnLeave", HideScrollbar)
 
-		-- push button to shop table for later access
-		SHOP_UI["NAV_BUTTONS"][i] = navButton
+    scrollbar:SetWidth(16)
 
-		-- Default hide all the buttons
-		navButton:Hide()
-	end
+    -- Function to update scroll range based on actual content
+    function SHOP_UI.UpdateScrollRange()
+        if not SHOP_UI["NAV_SCROLL_FRAME"] then return end
 
-	SHOP_UI.NavButtons_OnData()
+        local scrollFrame = SHOP_UI["NAV_SCROLL_FRAME"]
+        local scrollChild = SHOP_UI["NAV_SCROLL_CHILD"]
+        local scrollbar = SHOP_UI["NAV_SCROLLBAR"]
+
+        -- Count enabled categories
+        local visibleCategories = 0
+        for _, v in pairs(SHOP_UI["Data"].nav) do
+            if v[KEYS.category.enabled] == 1 then
+                visibleCategories = visibleCategories + 1
+            end
+        end
+
+        -- Calculate content height: button height (40) * number of buttons + padding (20)
+        local contentHeight = (visibleCategories * 40) + 20
+
+        -- Set scroll child size
+        scrollChild:SetSize(220 * scaleMulti, math.max(contentHeight, scrollFrame:GetHeight()))
+
+        -- Calculate scroll range - only allow scrolling if content is larger than view
+        local scrollRange = math.max(0, contentHeight - scrollFrame:GetHeight())
+        scrollbar:SetMinMaxValues(0, scrollRange)
+
+        -- Reset scroll position
+        scrollbar:SetValue(0)
+        scrollFrame:SetVerticalScroll(0)
+    end
+
+    -- Handle scroll events
+    scrollbar:SetScript("OnValueChanged", function(self, value)
+        scrollFrame:SetVerticalScroll(value)
+    end)
+
+    -- Update scroll range initially
+    SHOP_UI.UpdateScrollRange()
+    scrollFrame:SetScript("OnSizeChanged", SHOP_UI.UpdateScrollRange)
+
+    -- Create navigation buttons
+    for i = 1, CONFIG.maxCategories do
+        local navButton = CreateFrame("Button", nil, scrollChild)
+        navButton.NavId = i
+
+        -- Main button
+        local size = 220
+        navButton:SetSize(size * scaleMulti, (size / 4) * scaleMulti)
+        navButton:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, offset)
+
+        navButton:SetNormalTexture("Interface/Store_UI/Frames/StoreFrame_Main")
+        navButton:SetHighlightTexture("Interface/Store_UI/Frames/StoreFrame_Main")
+        navButton:GetNormalTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 897, 1023, 960))
+        navButton:GetHighlightTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 960, 1023, 1023))
+
+        -- Category name
+        navButton.Name = navButton:CreateFontString()
+        navButton.Name:SetFont("Fonts\\FRIZQT__.TTF", 14)
+        navButton.Name:SetShadowOffset(1, -1)
+        navButton.Name:SetPoint("CENTER", navButton, "CENTER", 5, 0)
+
+        -- Icon
+        navButton.Icon = navButton:CreateTexture(nil, "BACKGROUND")
+        navButton.Icon:SetSize(31, 31)
+        navButton.Icon:SetPoint("LEFT", navButton, "LEFT", 6, -1)
+
+        -- increment Y coordinate offset
+        offset = offset - 40
+
+        navButton:SetScript("OnClick", SHOP_UI.NavButtons_OnClick)
+
+        -- push button to shop table for later access
+        SHOP_UI["NAV_BUTTONS"][i] = navButton
+
+        navButton:HookScript("OnEnter", ShowScrollbar)
+        navButton:HookScript("OnLeave", HideScrollbar)
+
+        -- Default hide all the buttons
+        navButton:Hide()
+    end
+
+    -- Enable mouse wheel scrolling
+    scrollFrame:EnableMouseWheel(true)
+    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+        local current = scrollbar:GetValue()
+        local min, max = scrollbar:GetMinMaxValues()
+        local step = 30 -- Adjust scroll speed
+
+        if delta < 0 then
+            scrollbar:SetValue(math.min(max, current + step))
+        else
+            scrollbar:SetValue(math.max(min, current - step))
+        end
+    end)
+
+    SHOP_UI.NavButtons_OnData()
 end
 
 function SHOP_UI.NavButtons_OnClick(self)
@@ -288,45 +388,53 @@ function SHOP_UI.NavButtons_UpdateSelect()
 end
 
 function SHOP_UI.NavButtons_OnData()
-	-- index used to determine category position
-	index = 1
+    -- index used to determine category position
+    local index = 1
 
-	-- some categories could be disabled/mismatched indexes
-	for _, v in pairs(SHOP_UI["Data"].nav) do
-		-- if we have more than max, break
-		if index > CONFIG.maxCategories then
-			break
-		end
+    -- some categories could be disabled/mismatched indexes
+    for _, v in pairs(SHOP_UI["Data"].nav) do
+        -- if we have more than max, break
+        if index > CONFIG.maxCategories then
+            break
+        end
 
-		-- if category is enabled then process button
-		if v[KEYS.category.enabled] == 1 then
-			-- Fetch button and assign vars
-			local button = SHOP_UI["NAV_BUTTONS"][index]
-			button.CategoryId = v[KEYS.category.id]
-			button.NameText = v[KEYS.category.name]
-			button.IconTexture = v[KEYS.category.icon]
-			button.RequiredRank = v[KEYS.category.requiredRank]
-			button.CategoryFlags = v[KEYS.category.flags]
+        -- if category is enabled then process button
+        if v[KEYS.category.enabled] == 1 then
+            -- Fetch button and assign vars
+            local button = SHOP_UI["NAV_BUTTONS"][index]
+            button.CategoryId = v[KEYS.category.id]
+            button.NameText = v[KEYS.category.name]
+            button.IconTexture = v[KEYS.category.icon]
+            button.RequiredRank = v[KEYS.category.requiredRank]
+            button.CategoryFlags = v[KEYS.category.flags]
 
-			-- Update elements
-			button.Icon:SetTexture("Interface/Icons/" .. button.IconTexture .. ".blp")
-			button.Name:SetFormattedText("|cffdbe005%s|r", button.NameText)
+            -- Update elements
+            button.Icon:SetTexture("Interface/Icons/" .. button.IconTexture .. ".blp")
+            button.Name:SetFormattedText("|cffdbe005%s|r", button.NameText)
 
-			-- Show button
-			button:Show()
+            -- Show button
+            button:Show()
 
-			-- increment index
-			index = index + 1
-		end
-	end
+            -- increment index
+            index = index + 1
+        end
+    end
 
-	-- We should now set the correct "initial" data for the first indexed category
-	local button = SHOP_UI["NAV_BUTTONS"][1]
-	SHOP_UI["Vars"].currentCategory = button.CategoryId
-	SHOP_UI["Vars"].currentCategoryFlags = button.CategoryFlags
-	SHOP_UI["Vars"].currentNavId = button.NavId
+    -- Hide unused buttons
+    for i = index, CONFIG.maxCategories do
+        SHOP_UI["NAV_BUTTONS"][i]:Hide()
+    end
 
-	SHOP_UI.NavButtons_UpdateSelect()
+    -- We should now set the correct "initial" data for the first indexed category
+    local button = SHOP_UI["NAV_BUTTONS"][1]
+    SHOP_UI["Vars"].currentCategory = button.CategoryId
+    SHOP_UI["Vars"].currentCategoryFlags = button.CategoryFlags
+    SHOP_UI["Vars"].currentNavId = button.NavId
+
+    SHOP_UI.NavButtons_UpdateSelect()
+
+    -- Update scroll range after data changes
+    SHOP_UI.UpdateScrollRange()
 end
 
 function SHOP_UI.OnPurchaseConfirm(data)
@@ -852,7 +960,7 @@ function SHOP_UI.CurrencyBadges_OnData()
 		local x = offset_x + (i - 1) * spacing
 
 		-- and finally set the button position with the calculated x value
-		button:SetPoint("CENTER", button:GetParent(), "CENTER", x, 0)
+		button:SetPoint("CENTER", button:GetParent(), "CENTER", x, -3)
 	end
 
 	SHOP_UI.CurrencyBadges_Update()

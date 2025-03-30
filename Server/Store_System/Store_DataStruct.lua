@@ -263,6 +263,22 @@ function GetCurrencyData()
 	return CurrencyData.Cache
 end
 
+function RefreshStoreData()
+    -- Clear existing caches
+    ServiceData.Cache = {}
+    LinkData.Cache = {}
+    NavData.Cache = {}
+    CurrencyData.Cache = {}
+    CreatureDisplays.Cache = {}
+
+    -- Reload all data
+    ServiceData.Load()
+    LinkData.Load()
+    NavData.Load()
+    CurrencyData.Load()
+    CreatureDisplays.Load()
+end
+
 ServiceData.Load()
 LinkData.Load()
 NavData.Load()
