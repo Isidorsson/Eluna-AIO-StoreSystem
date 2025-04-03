@@ -238,7 +238,7 @@ function SHOP_UI.ItemHandler(player, data)
 			.. " for "
 			.. amount
 			.. " "
-			.. GetCurrencyDataOlympus()[currency][KEYS.currency.name]
+			.. GetCurrencyData()[currency][KEYS.currency.name]
 			.. "! Please check your mail."
 	)
 
