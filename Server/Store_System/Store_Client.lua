@@ -68,8 +68,8 @@ local KEYS = {
 	},
 }
 
--- local scaleMulti = 0.85
-local scaleMulti = 0.8
+local scaleMulti = 0.85
+-- local scaleMulti = 0.8
 -- Helpers --
 
 local function CoordsToTexCoords(size, xTop, yTop, xBottom, yBottom)
@@ -217,143 +217,145 @@ end
 
 -- create navigation button placeholders
 function SHOP_UI.NavButtons_Create(parent)
-    -- Create scroll frame container
-    local scrollFrame = CreateFrame("ScrollFrame", nil, parent)
-    scrollFrame:SetSize(250 * scaleMulti, 520 * scaleMulti)
-    scrollFrame:SetPoint("LEFT", parent, "LEFT", 14, 0)
+	-- Create scroll frame container
+	local scrollFrame = CreateFrame("ScrollFrame", nil, parent)
+	scrollFrame:SetSize(250 * scaleMulti, 520 * scaleMulti)
+	scrollFrame:SetPoint("LEFT", parent, "LEFT", 14, 0)
 
-    -- Store references for later use
-    SHOP_UI["NAV_SCROLL_FRAME"] = scrollFrame
+	-- Store references for later use
+	SHOP_UI["NAV_SCROLL_FRAME"] = scrollFrame
 
-    -- Create the scroll child frame that will contain the buttons
-    local scrollChild = CreateFrame("Frame", nil, scrollFrame)
-    scrollFrame:SetScrollChild(scrollChild)
-    SHOP_UI["NAV_SCROLL_CHILD"] = scrollChild
+	-- Create the scroll child frame that will contain the buttons
+	local scrollChild = CreateFrame("Frame", nil, scrollFrame)
+	scrollFrame:SetScrollChild(scrollChild)
+	SHOP_UI["NAV_SCROLL_CHILD"] = scrollChild
 
-    -- Initialize buttons table
-    SHOP_UI["NAV_BUTTONS"] = {}
-    local offset = 0
+	-- Initialize buttons table
+	SHOP_UI["NAV_BUTTONS"] = {}
+	local offset = 0
 
-    -- Create scroll bar first
-    local scrollbar = CreateFrame("Slider", nil, scrollFrame, "UIPanelScrollBarTemplate")
-    SHOP_UI["NAV_SCROLLBAR"] = scrollbar
+	-- Create scroll bar first
+	local scrollbar = CreateFrame("Slider", nil, scrollFrame, "UIPanelScrollBarTemplate")
+	SHOP_UI["NAV_SCROLLBAR"] = scrollbar
 
-    -- Position scrollbar
-    scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", -20, -14)
-    scrollbar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", -20, 12)
-    scrollbar:SetWidth(16)
-    scrollbar:SetAlpha(0.5)
+	-- Position scrollbar
+	scrollbar:SetPoint("TOPRIGHT", scrollFrame, "TOPRIGHT", -20, -14)
+	scrollbar:SetPoint("BOTTOMRIGHT", scrollFrame, "BOTTOMRIGHT", -20, 12)
+	scrollbar:SetWidth(16)
+	scrollbar:SetAlpha(0.5)
 
-    -- Add mouseover show/hide functionality
-    local function ShowScrollbar()
-        scrollbar:SetAlpha(1)
-    end
+	-- Add mouseover show/hide functionality
+	local function ShowScrollbar()
+		scrollbar:SetAlpha(1)
+	end
 
-    local function HideScrollbar()
-        scrollbar:SetAlpha(0.5)
-    end
+	local function HideScrollbar()
+		scrollbar:SetAlpha(0.5)
+	end
 
-    scrollbar:HookScript("OnEnter", ShowScrollbar)
-    scrollbar:HookScript("OnLeave", HideScrollbar)
+	scrollbar:HookScript("OnEnter", ShowScrollbar)
+	scrollbar:HookScript("OnLeave", HideScrollbar)
 
-    scrollbar:SetWidth(16)
+	scrollbar:SetWidth(16)
 
-    -- Function to update scroll range based on actual content
-    function SHOP_UI.UpdateScrollRange()
-        if not SHOP_UI["NAV_SCROLL_FRAME"] then return end
+	-- Function to update scroll range based on actual content
+	function SHOP_UI.UpdateScrollRange()
+		if not SHOP_UI["NAV_SCROLL_FRAME"] then
+			return
+		end
 
-        local scrollFrame = SHOP_UI["NAV_SCROLL_FRAME"]
-        local scrollChild = SHOP_UI["NAV_SCROLL_CHILD"]
-        local scrollbar = SHOP_UI["NAV_SCROLLBAR"]
+		local scrollFrame = SHOP_UI["NAV_SCROLL_FRAME"]
+		local scrollChild = SHOP_UI["NAV_SCROLL_CHILD"]
+		local scrollbar = SHOP_UI["NAV_SCROLLBAR"]
 
-        -- Count enabled categories
-        local visibleCategories = 0
-        for _, v in pairs(SHOP_UI["Data"].nav) do
-            if v[KEYS.category.enabled] == 1 then
-                visibleCategories = visibleCategories + 1
-            end
-        end
+		-- Count enabled categories
+		local visibleCategories = 0
+		for _, v in pairs(SHOP_UI["Data"].nav) do
+			if v[KEYS.category.enabled] == 1 then
+				visibleCategories = visibleCategories + 1
+			end
+		end
 
-        -- Calculate content height: button height (40) * number of buttons + padding (20)
-        local contentHeight = (visibleCategories * 40) + 20
+		-- Calculate content height: button height (40) * number of buttons + padding (20)
+		local contentHeight = (visibleCategories * 40) + 20
 
-        -- Set scroll child size
-        scrollChild:SetSize(220 * scaleMulti, math.max(contentHeight, scrollFrame:GetHeight()))
+		-- Set scroll child size
+		scrollChild:SetSize(220 * scaleMulti, math.max(contentHeight, scrollFrame:GetHeight()))
 
-        -- Calculate scroll range - only allow scrolling if content is larger than view
-        local scrollRange = math.max(0, contentHeight - scrollFrame:GetHeight())
-        scrollbar:SetMinMaxValues(0, scrollRange)
+		-- Calculate scroll range - only allow scrolling if content is larger than view
+		local scrollRange = math.max(0, contentHeight - scrollFrame:GetHeight())
+		scrollbar:SetMinMaxValues(0, scrollRange)
 
-        -- Reset scroll position
-        scrollbar:SetValue(0)
-        scrollFrame:SetVerticalScroll(0)
-    end
+		-- Reset scroll position
+		scrollbar:SetValue(0)
+		scrollFrame:SetVerticalScroll(0)
+	end
 
-    -- Handle scroll events
-    scrollbar:SetScript("OnValueChanged", function(self, value)
-        scrollFrame:SetVerticalScroll(value)
-    end)
+	-- Handle scroll events
+	scrollbar:SetScript("OnValueChanged", function(self, value)
+		scrollFrame:SetVerticalScroll(value)
+	end)
 
-    -- Update scroll range initially
-    SHOP_UI.UpdateScrollRange()
-    scrollFrame:SetScript("OnSizeChanged", SHOP_UI.UpdateScrollRange)
+	-- Update scroll range initially
+	SHOP_UI.UpdateScrollRange()
+	scrollFrame:SetScript("OnSizeChanged", SHOP_UI.UpdateScrollRange)
 
-    -- Create navigation buttons
-    for i = 1, CONFIG.maxCategories do
-        local navButton = CreateFrame("Button", nil, scrollChild)
-        navButton.NavId = i
+	-- Create navigation buttons
+	for i = 1, CONFIG.maxCategories do
+		local navButton = CreateFrame("Button", nil, scrollChild)
+		navButton.NavId = i
 
-        -- Main button
-        local size = 220
-        navButton:SetSize(size * scaleMulti, (size / 4) * scaleMulti)
-        navButton:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, offset)
+		-- Main button
+		local size = 220
+		navButton:SetSize(size * scaleMulti, (size / 4) * scaleMulti)
+		navButton:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, offset)
 
-        navButton:SetNormalTexture("Interface/Store_UI/Frames/StoreFrame_Main")
-        navButton:SetHighlightTexture("Interface/Store_UI/Frames/StoreFrame_Main")
-        navButton:GetNormalTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 897, 1023, 960))
-        navButton:GetHighlightTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 960, 1023, 1023))
+		navButton:SetNormalTexture("Interface/Store_UI/Frames/StoreFrame_Main")
+		navButton:SetHighlightTexture("Interface/Store_UI/Frames/StoreFrame_Main")
+		navButton:GetNormalTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 897, 1023, 960))
+		navButton:GetHighlightTexture():SetTexCoord(CoordsToTexCoords(1024, 768, 960, 1023, 1023))
 
-        -- Category name
-        navButton.Name = navButton:CreateFontString()
-        navButton.Name:SetFont("Fonts\\FRIZQT__.TTF", 14)
-        navButton.Name:SetShadowOffset(1, -1)
-        navButton.Name:SetPoint("CENTER", navButton, "CENTER", 5, 0)
+		-- Category name
+		navButton.Name = navButton:CreateFontString()
+		navButton.Name:SetFont("Fonts\\FRIZQT__.TTF", 14)
+		navButton.Name:SetShadowOffset(1, -1)
+		navButton.Name:SetPoint("CENTER", navButton, "CENTER", 5, 0)
 
-        -- Icon
-        navButton.Icon = navButton:CreateTexture(nil, "BACKGROUND")
-        navButton.Icon:SetSize(31, 31)
-        navButton.Icon:SetPoint("LEFT", navButton, "LEFT", 6, -1)
+		-- Icon
+		navButton.Icon = navButton:CreateTexture(nil, "BACKGROUND")
+		navButton.Icon:SetSize(31, 31)
+		navButton.Icon:SetPoint("LEFT", navButton, "LEFT", 6, -1)
 
-        -- increment Y coordinate offset
-        offset = offset - 40
+		-- increment Y coordinate offset
+		offset = offset - 40
 
-        navButton:SetScript("OnClick", SHOP_UI.NavButtons_OnClick)
+		navButton:SetScript("OnClick", SHOP_UI.NavButtons_OnClick)
 
-        -- push button to shop table for later access
-        SHOP_UI["NAV_BUTTONS"][i] = navButton
+		-- push button to shop table for later access
+		SHOP_UI["NAV_BUTTONS"][i] = navButton
 
-        navButton:HookScript("OnEnter", ShowScrollbar)
-        navButton:HookScript("OnLeave", HideScrollbar)
+		navButton:HookScript("OnEnter", ShowScrollbar)
+		navButton:HookScript("OnLeave", HideScrollbar)
 
-        -- Default hide all the buttons
-        navButton:Hide()
-    end
+		-- Default hide all the buttons
+		navButton:Hide()
+	end
 
-    -- Enable mouse wheel scrolling
-    scrollFrame:EnableMouseWheel(true)
-    scrollFrame:SetScript("OnMouseWheel", function(self, delta)
-        local current = scrollbar:GetValue()
-        local min, max = scrollbar:GetMinMaxValues()
-        local step = 30 -- Adjust scroll speed
+	-- Enable mouse wheel scrolling
+	scrollFrame:EnableMouseWheel(true)
+	scrollFrame:SetScript("OnMouseWheel", function(self, delta)
+		local current = scrollbar:GetValue()
+		local min, max = scrollbar:GetMinMaxValues()
+		local step = 30 -- Adjust scroll speed
 
-        if delta < 0 then
-            scrollbar:SetValue(math.min(max, current + step))
-        else
-            scrollbar:SetValue(math.max(min, current - step))
-        end
-    end)
+		if delta < 0 then
+			scrollbar:SetValue(math.min(max, current + step))
+		else
+			scrollbar:SetValue(math.max(min, current - step))
+		end
+	end)
 
-    SHOP_UI.NavButtons_OnData()
+	SHOP_UI.NavButtons_OnData()
 end
 
 function SHOP_UI.NavButtons_OnClick(self)
@@ -388,53 +390,53 @@ function SHOP_UI.NavButtons_UpdateSelect()
 end
 
 function SHOP_UI.NavButtons_OnData()
-    -- index used to determine category position
-    local index = 1
+	-- index used to determine category position
+	local index = 1
 
-    -- some categories could be disabled/mismatched indexes
-    for _, v in pairs(SHOP_UI["Data"].nav) do
-        -- if we have more than max, break
-        if index > CONFIG.maxCategories then
-            break
-        end
+	-- some categories could be disabled/mismatched indexes
+	for _, v in pairs(SHOP_UI["Data"].nav) do
+		-- if we have more than max, break
+		if index > CONFIG.maxCategories then
+			break
+		end
 
-        -- if category is enabled then process button
-        if v[KEYS.category.enabled] == 1 then
-            -- Fetch button and assign vars
-            local button = SHOP_UI["NAV_BUTTONS"][index]
-            button.CategoryId = v[KEYS.category.id]
-            button.NameText = v[KEYS.category.name]
-            button.IconTexture = v[KEYS.category.icon]
-            button.RequiredRank = v[KEYS.category.requiredRank]
-            button.CategoryFlags = v[KEYS.category.flags]
+		-- if category is enabled then process button
+		if v[KEYS.category.enabled] == 1 then
+			-- Fetch button and assign vars
+			local button = SHOP_UI["NAV_BUTTONS"][index]
+			button.CategoryId = v[KEYS.category.id]
+			button.NameText = v[KEYS.category.name]
+			button.IconTexture = v[KEYS.category.icon]
+			button.RequiredRank = v[KEYS.category.requiredRank]
+			button.CategoryFlags = v[KEYS.category.flags]
 
-            -- Update elements
-            button.Icon:SetTexture("Interface/Icons/" .. button.IconTexture .. ".blp")
-            button.Name:SetFormattedText("|cffdbe005%s|r", button.NameText)
+			-- Update elements
+			button.Icon:SetTexture("Interface/Icons/" .. button.IconTexture .. ".blp")
+			button.Name:SetFormattedText("|cffdbe005%s|r", button.NameText)
 
-            -- Show button
-            button:Show()
+			-- Show button
+			button:Show()
 
-            -- increment index
-            index = index + 1
-        end
-    end
+			-- increment index
+			index = index + 1
+		end
+	end
 
-    -- Hide unused buttons
-    for i = index, CONFIG.maxCategories do
-        SHOP_UI["NAV_BUTTONS"][i]:Hide()
-    end
+	-- Hide unused buttons
+	for i = index, CONFIG.maxCategories do
+		SHOP_UI["NAV_BUTTONS"][i]:Hide()
+	end
 
-    -- We should now set the correct "initial" data for the first indexed category
-    local button = SHOP_UI["NAV_BUTTONS"][1]
-    SHOP_UI["Vars"].currentCategory = button.CategoryId
-    SHOP_UI["Vars"].currentCategoryFlags = button.CategoryFlags
-    SHOP_UI["Vars"].currentNavId = button.NavId
+	-- We should now set the correct "initial" data for the first indexed category
+	local button = SHOP_UI["NAV_BUTTONS"][1]
+	SHOP_UI["Vars"].currentCategory = button.CategoryId
+	SHOP_UI["Vars"].currentCategoryFlags = button.CategoryFlags
+	SHOP_UI["Vars"].currentNavId = button.NavId
 
-    SHOP_UI.NavButtons_UpdateSelect()
+	SHOP_UI.NavButtons_UpdateSelect()
 
-    -- Update scroll range after data changes
-    SHOP_UI.UpdateScrollRange()
+	-- Update scroll range after data changes
+	SHOP_UI.UpdateScrollRange()
 end
 
 function SHOP_UI.OnPurchaseConfirm(data)
@@ -469,10 +471,10 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		service.TooltipType = ""
 		service.TooltipHyperlink = 0
 
-		-- determine box coordinates
-		local row1_y = 100
-		local row2_y = -135
-		local x_offsets = { -140, 20, 180, 340 }
+		-- determine box coordinates - scale with scaleMulti
+		local row1_y = 130 * scaleMulti
+		local row2_y = -150 * scaleMulti
+        local x_offsets = { -165 * scaleMulti, 25 * scaleMulti, 215 * scaleMulti, 400 * scaleMulti }
 		local BoxCoordX, BoxCoordY
 		if i <= 4 then
 			BoxCoordY = row1_y
@@ -481,77 +483,78 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		end
 		BoxCoordX = x_offsets[(i - 1) % 4 + 1]
 
-		service:SetSize(150, 230)
+		-- Scale service box size
+        service:SetSize(180 * scaleMulti, 260 * scaleMulti)
 		service:SetPoint("CENTER", parent, "CENTER", BoxCoordX, BoxCoordY)
 		service:SetNormalTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service:SetHighlightTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service:GetNormalTexture():SetTexCoord(CoordsToTexCoords(1024, 0, 658, 215, 1023))
 		service:GetHighlightTexture():SetTexCoord(CoordsToTexCoords(1024, 215, 658, 430, 1023))
 
-		-- icon
+		-- icon - scale size and position
 		service.Icon = service:CreateTexture(nil, "BACKGROUND")
-		service.Icon:SetSize(40, 40)
-		service.Icon:SetPoint("CENTER", service, "CENTER", 0, 64)
+		service.Icon:SetSize(45 * scaleMulti, 45 * scaleMulti)
+        service.Icon:SetPoint("CENTER", service, "CENTER", 0, 69 * scaleMulti)
 
-		-- service name
+		-- service name - scale font size and position
 		service.NameFont = service:CreateFontString()
-		service.NameFont:SetFont("Fonts\\FRIZQT__.TTF", 11)
-		service.NameFont:SetShadowOffset(1, -1)
-		service.NameFont:SetPoint("CENTER", service, "CENTER", 0, 16)
+		service.NameFont:SetFont("Fonts\\FRIZQT__.TTF", 11 * scaleMulti)
+		service.NameFont:SetShadowOffset(1 * scaleMulti, -1 * scaleMulti)
+		service.NameFont:SetPoint("CENTER", service, "CENTER", 0, 16 * scaleMulti)
 
-		-- service price
+		-- service price - scale font size and position
 		service.PriceFont = service:CreateFontString()
-		service.PriceFont:SetFont("Fonts\\FRIZQT__.TTF", 13)
-		service.PriceFont:SetShadowOffset(1, -1)
-		service.PriceFont:SetPoint("CENTER", service, "CENTER", -3, -30)
+		service.PriceFont:SetFont("Fonts\\FRIZQT__.TTF", 13 * scaleMulti)
+		service.PriceFont:SetShadowOffset(1 * scaleMulti, -1 * scaleMulti)
+		service.PriceFont:SetPoint("CENTER", service, "CENTER", -3 * scaleMulti, -30 * scaleMulti)
 
-		-- price currency icon
+		-- price currency icon - scale size and position
 		service.currencyIcon = service:CreateTexture(nil, "OVERLAY")
-		service.currencyIcon:SetSize(18, 18)
+		service.currencyIcon:SetSize(18 * scaleMulti, 18 * scaleMulti)
 		service.currencyIcon:SetPoint("LEFT", service.PriceFont, "RIGHT", 0, 0)
 
-		--Discount--
+		--Discount - scale font size and position
 		service.DicountFont = service:CreateFontString()
-		service.DicountFont:SetFont("Fonts\\FRIZQT__.TTF", 10)
-		service.DicountFont:SetShadowOffset(1, -1)
-		service.DicountFont:SetPoint("CENTER", service.PriceFont, "CENTER", -30, 0)
+		service.DicountFont:SetFont("Fonts\\FRIZQT__.TTF", 10 * scaleMulti)
+		service.DicountFont:SetShadowOffset(1 * scaleMulti, -1 * scaleMulti)
+		service.DicountFont:SetPoint("CENTER", service.PriceFont, "CENTER", -30 * scaleMulti, 0)
 
-		--Discount Line--
+		--Discount Line - scale size and position
 		service.DiscountSlash = service:CreateTexture(nil, "OVERLAY")
-		service.DiscountSlash:SetSize(18, 18)
+		service.DiscountSlash:SetSize(18 * scaleMulti, 18 * scaleMulti)
 		service.DiscountSlash:SetPoint("CENTER", service.DicountFont)
 		service.DiscountSlash:SetTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service.DiscountSlash:SetTexCoord(CoordsToTexCoords(1024, 992, 804, 1023, 835))
 
-		--Discount Banner--
+		--Discount Banner - scale size and position
 		service.Banner = CreateFrame("Frame", nil, service)
-		service.Banner:SetSize(80, 25)
-		service.Banner:SetPoint("TOPRIGHT", service, "TOPRIGHT", 1, 4)
+		service.Banner:SetSize(80 * scaleMulti, 25 * scaleMulti)
+		service.Banner:SetPoint("TOPRIGHT", service, "TOPRIGHT", 1 * scaleMulti, 4 * scaleMulti)
 
-		-- Discount Banner Background--
+		-- Discount Banner Background - scale size
 		service.Banner.Background = service.Banner:CreateTexture(nil, "BACKGROUND")
-		service.Banner.Background:SetSize(80, 25)
+		service.Banner.Background:SetSize(80 * scaleMulti, 25 * scaleMulti)
 		service.Banner.Background:SetPoint("CENTER", service.Banner)
 		service.Banner.Background:SetTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service.Banner.Background:SetTexCoord(CoordsToTexCoords(1024, 961, 835, 1023, 866))
 
-		--Discount Banner Text--
+		--Discount Banner Text - scale font size
 		service.BannerText = service.Banner:CreateFontString()
-		service.BannerText:SetFont("Fonts\\FRIZQT__.TTF", 11)
-		service.BannerText:SetShadowOffset(1, -1)
+		service.BannerText:SetFont("Fonts\\FRIZQT__.TTF", 11 * scaleMulti)
+		service.BannerText:SetShadowOffset(1 * scaleMulti, -1 * scaleMulti)
 		service.BannerText:SetPoint("CENTER", service.Banner.Background)
 
-		--New Tag--
+		--New Tag - scale size and position
 		service.newTag = service:CreateTexture(nil, "OVERLAY")
-		service.newTag:SetSize(65, 30)
-		service.newTag:SetPoint("CENTER", service, "LEFT", 35, 90)
+		service.newTag:SetSize(65 * scaleMulti, 30 * scaleMulti)
+		service.newTag:SetPoint("CENTER", service, "LEFT", 35 * scaleMulti, 90 * scaleMulti)
 		service.newTag:SetTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service.newTag:SetTexCoord(CoordsToTexCoords(1024, 862, 816, 961, 866))
 
-		-- Buy now button
+		-- Buy now button - scale size and position
 		service.buyButton = CreateFrame("Button", nil, service)
-		service.buyButton:SetSize(100, 20)
-		service.buyButton:SetPoint("CENTER", service, "CENTER", 0, -85)
+		service.buyButton:SetSize(100 * scaleMulti, 20 * scaleMulti)
+		service.buyButton:SetPoint("CENTER", service, "CENTER", 0, -85 * scaleMulti)
 		service.buyButton:SetNormalTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service.buyButton:SetHighlightTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service.buyButton:SetPushedTexture("Interface/Store_UI/Frames/StoreFrame_Main")
@@ -559,9 +562,9 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		service.buyButton:GetHighlightTexture():SetTexCoord(CoordsToTexCoords(1024, 709, 849, 837, 873))
 		service.buyButton:GetPushedTexture():SetTexCoord(CoordsToTexCoords(1024, 709, 873, 837, 897))
 
-		-- Buy now button text
+		-- Buy now button text - scale font size
 		service.buyButton.ButtonText = service.buyButton:CreateFontString()
-		service.buyButton.ButtonText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+		service.buyButton.ButtonText:SetFont("Fonts\\FRIZQT__.TTF", 11 * scaleMulti, "OUTLINE")
 		service.buyButton.ButtonText:SetPoint("CENTER", service.buyButton, 0, 0)
 		service.buyButton.ButtonText:SetText("Buy now!")
 
@@ -824,6 +827,18 @@ function SHOP_UI.PageButtons_Create(parent)
 	forwardButton:SetScript("OnClick", function()
 		SHOP_UI.PageButtons_OnClick(1)
 	end)
+
+    parent:EnableMouseWheel(true)
+    parent:SetScript("OnMouseWheel", function(self, delta)
+        -- Delta is positive when scrolling up, negative when scrolling down
+        if delta > 0 then
+            -- Scroll up - go to previous page
+            SHOP_UI.PageButtons_OnClick(-1)
+        else
+            -- Scroll down - go to next page
+            SHOP_UI.PageButtons_OnClick(1)
+        end
+    end)
 
 	SHOP_UI["PAGING_ELEMENTS"] = { backButton, forwardButton, pageText }
 	SHOP_UI.PageButtons_Update()
