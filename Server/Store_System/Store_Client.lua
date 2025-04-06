@@ -65,12 +65,117 @@ local KEYS = {
 		rewardCount_8 = 28,
 		new = 29,
 		enabled = 30,
+        required_faction = 31,
+        required_standing = 32,
 	},
 }
 
 local scaleMulti = 0.85
 -- local scaleMulti = 0.8
 -- Helpers --
+
+local FACTION_STANDING_TEXT = {
+    ["Hated"] = "|cffcc2222Hated|r",
+    ["Hostile"] = "|cffff0000Hostile|r",
+    ["Unfriendly"] = "|cffff6600Unfriendly|r",
+    ["Neutral"] = "|cffffff00Neutral|r",
+    ["Friendly"] = "|cff00ff00Friendly|r",
+    ["Honored"] = "|cff00ff66Honored|r",
+    ["Revered"] = "|cff00ffffRevered|r",
+    ["Exalted"] = "|cff00ccffExalted|r"
+}
+
+local FACTION_STANDING_LEVELS = {
+    ["Hated"] = 1,
+    ["Hostile"] = 2,
+    ["Unfriendly"] = 3,
+    ["Neutral"] = 4,
+    ["Friendly"] = 5,
+    ["Honored"] = 6,
+    ["Revered"] = 7,
+    ["Exalted"] = 8
+}
+
+local function GetFactionName(factionId)
+    if not factionId or factionId == 0 then return nil end
+    return GetFactionInfoByID(factionId)
+end
+
+local function GetStandingText(standing)
+    return FACTION_STANDING_TEXT[standing] or "Unknown"
+end
+
+local function GetStandingLevel(standing)
+    return FACTION_STANDING_LEVELS[standing] or 4  -- Default to Neutral if unknown
+end
+
+local function GetStandingByLevel(level)
+    for standing, value in pairs(FACTION_STANDING_LEVELS) do
+        if value == level then
+            return standing
+        end
+    end
+    return "Neutral" -- Default to Neutral if not found
+end
+
+local function PlayerHasRequiredStanding(player, factionId, requiredStanding)
+    if not factionId or factionId == 0 then return true end
+    if not requiredStanding then return true end
+
+    local name, description, standingId, barMin, barMax, barValue = GetFactionInfoByID(factionId)
+    if not standingId then return false end
+
+    local currentStanding = GetStandingByLevel(standingId)
+    return GetStandingLevel(currentStanding) >= GetStandingLevel(requiredStanding)
+end
+
+local function CanPurchaseWithStanding(currentStanding, requiredStanding, requiredLevel, currentLevel)
+    -- For positive standings (Neutral through Exalted)
+    if requiredLevel >= FACTION_STANDING_LEVELS["Neutral"] then
+        -- Must be at least Neutral to access positive standing items
+        if currentLevel < FACTION_STANDING_LEVELS["Neutral"] then
+            return false
+        end
+        -- Can buy any item requiring your current standing or lower (down to Neutral)
+        return currentLevel >= requiredLevel
+    else
+        -- For negative standings (Hated through Unfriendly)
+        -- Must be below Neutral to access negative standing items
+        if currentLevel >= FACTION_STANDING_LEVELS["Neutral"] then
+            return false
+        end
+        -- For negative standings, you can buy items from your current standing and higher
+        return currentLevel <= requiredLevel
+    end
+end
+
+local function UpdateBuyButtonState(button, service)
+    -- Check if player has required reputation
+    local canBuy = true
+    if service.RequiredFaction > 0 then
+        local name, description, standingId = GetFactionInfoByID(service.RequiredFaction)
+        if not standingId then
+            canBuy = false
+        else
+            local currentStanding = GetStandingByLevel(standingId)
+            local requiredLevel = FACTION_STANDING_LEVELS[service.RequiredStanding]
+            local currentLevel = FACTION_STANDING_LEVELS[currentStanding]
+
+            if not CanPurchaseWithStanding(currentStanding, service.RequiredStanding, requiredLevel, currentLevel) then
+                canBuy = false
+            end
+        end
+    end
+
+    -- Update button state
+    if canBuy then
+        button:Enable()
+        button.ButtonText:SetTextColor(1, 1, 1, 1)
+    else
+        button:Disable()
+        button.ButtonText:SetTextColor(0.5, 0.5, 0.5, 1)
+    end
+end
 
 local function CoordsToTexCoords(size, xTop, yTop, xBottom, yBottom)
 	local magic = (1 / size) / 2
@@ -470,6 +575,8 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		service.TooltipText = nil
 		service.TooltipType = ""
 		service.TooltipHyperlink = 0
+		service.RequiredFaction = 0
+		service.RequiredStanding = 0
 
 		-- determine box coordinates - scale with scaleMulti
 		local row1_y = 130 * scaleMulti
@@ -551,6 +658,12 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		service.newTag:SetTexture("Interface/Store_UI/Frames/StoreFrame_Main")
 		service.newTag:SetTexCoord(CoordsToTexCoords(1024, 862, 816, 961, 866))
 
+		 -- Faction requirement text
+        service.FactionRequirement = service:CreateFontString()
+        service.FactionRequirement:SetFont("Fonts\\FRIZQT__.TTF", 10 * scaleMulti)
+        service.FactionRequirement:SetShadowOffset(1 * scaleMulti, -1 * scaleMulti)
+        service.FactionRequirement:SetPoint("CENTER", service, "CENTER", 0, -60 * scaleMulti)
+
 		-- Buy now button - scale size and position
 		service.buyButton = CreateFrame("Button", nil, service)
 		service.buyButton:SetSize(100 * scaleMulti, 20 * scaleMulti)
@@ -586,20 +699,62 @@ function SHOP_UI.ServiceBoxes_Create(parent)
 		-- Tooltip script
 		-- this requires a few predefined variables tied to the tab object, we override these in the update function
 		service:SetScript("OnEnter", function(self)
-			if self.TooltipName or self.TooltipText or self.TooltipType then
-				GameTooltip:SetOwner(self, "ANCHOR_NONE")
-				GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 0, 0)
-				if self.TooltipName then
-					GameTooltip:AddLine("|cffffffff" .. self.TooltipName .. "|r") -- Tooltip Insidename
-				end
-				if self.TooltipType == "item" or self.TooltipType == "spell" then
-					GameTooltip:SetHyperlink(self.TooltipType .. ":" .. self.TooltipHyperlink)
-				end
-				if self.TooltipText then
-					GameTooltip:AddLine(self.TooltipText)
-				end
-				GameTooltip:Show()
+			GameTooltip:SetOwner(self, "ANCHOR_NONE")
+			GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 0, 0)
+
+			-- Show item name
+			if self.TooltipName then
+				GameTooltip:AddLine("|cffffffff" .. self.TooltipName .. "|r")
 			end
+
+			-- Show item/spell tooltip
+			if self.TooltipType == "item" or self.TooltipType == "spell" then
+				GameTooltip:SetHyperlink(self.TooltipType .. ":" .. self.TooltipHyperlink)
+			end
+
+			-- Show additional tooltip text
+			if self.TooltipText then
+				GameTooltip:AddLine(self.TooltipText)
+			end
+
+			-- Show reputation requirements if any
+			if self.RequiredFaction and self.RequiredFaction > 0 then
+				local factionName = GetFactionName(self.RequiredFaction)
+				local requiredStandingText = GetStandingText(self.RequiredStanding)
+				if factionName then
+					GameTooltip:AddLine(" ")
+					GameTooltip:AddLine("Required: " .. requiredStandingText .. " with " .. factionName)
+
+					-- Show current standing if available
+					local name, description, standingId = GetFactionInfoByID(self.RequiredFaction)
+					if standingId then
+						local currentStanding = GetStandingByLevel(standingId)
+						local currentStandingText = GetStandingText(currentStanding)
+						local requiredLevel = FACTION_STANDING_LEVELS[self.RequiredStanding]
+						local currentLevel = FACTION_STANDING_LEVELS[currentStanding]
+
+						if requiredLevel >= FACTION_STANDING_LEVELS["Neutral"] then
+							-- For positive standings (Neutral and above)
+							if currentLevel >= requiredLevel then
+								GameTooltip:AddLine("Current: " .. currentStandingText .. " (Requirement Met)", 0, 1, 0)
+							else
+								GameTooltip:AddLine("Current: " .. currentStandingText .. " (Not High Enough)", 1, 0, 0)
+							end
+						else
+							-- For negative standings (Below Neutral)
+							if currentLevel >= FACTION_STANDING_LEVELS["Neutral"] then
+								GameTooltip:AddLine("Current: " .. currentStandingText .. " (Too High - Need Lower Standing)", 1, 0, 0)
+							elseif currentLevel <= requiredLevel then
+								GameTooltip:AddLine("Current: " .. currentStandingText .. " (Requirement Met)", 0, 1, 0)
+							else
+								GameTooltip:AddLine("Current: " .. currentStandingText .. " (Not Low Enough)", 1, 0, 0)
+							end
+						end
+					end
+				end
+			end
+
+			GameTooltip:Show()
 		end)
 
 		service:SetScript("OnLeave", function(self)
@@ -721,6 +876,8 @@ function SHOP_UI.ServiceBoxes_Update()
 			service.Discount = serviceData[KEYS.service.discount]
 			service.Flags = serviceData[KEYS.service.flags]
 			service.New = serviceData[KEYS.service.new]
+			service.RequiredFaction = serviceData[KEYS.service.required_faction]
+			service.RequiredStanding = serviceData[KEYS.service.required_standing]
 
 			-- Add all rewards to table
 			service.Rewards = {}
@@ -762,6 +919,19 @@ function SHOP_UI.ServiceBoxes_Update()
 			else
 				service.newTag:Hide()
 			end
+
+			 -- Update faction requirement text
+            if service.RequiredFaction > 0 then
+                local factionName = GetFactionName(service.RequiredFaction)
+                local standingText = GetStandingText(service.RequiredStanding)
+                service.FactionRequirement:SetFormattedText("|cffffffff%s: %s|r", factionName, standingText)
+                service.FactionRequirement:Show()
+            else
+                service.FactionRequirement:Hide()
+            end
+
+			 -- Update buy button state based on reputation
+            UpdateBuyButtonState(service.buyButton, service)
 
 			-- Show service box
 			service:Show()

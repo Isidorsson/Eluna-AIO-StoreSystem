@@ -60,6 +60,8 @@ local KEYS = {
 		rewardCount_8 = 28,
 		new = 29,
 		enabled = 30,
+		required_faction = 31,
+		required_standing = 32,
 	},
 }
 
@@ -139,6 +141,9 @@ function ServiceData.Load()
 					Query:GetUInt32(KEYS.service.rewardCount_7),
 					Query:GetUInt32(KEYS.service.rewardCount_8),
 					Query:GetUInt32(KEYS.service.new),
+					Query:GetUInt32(KEYS.service.enabled),
+					Query:GetUInt32(KEYS.service.required_faction),
+					Query:GetString(KEYS.service.required_standing),
 				}
 			end
 		until not Query:NextRow()
@@ -264,19 +269,19 @@ function GetCurrencyData()
 end
 
 function RefreshStoreData()
-    -- Clear existing caches
-    ServiceData.Cache = {}
-    LinkData.Cache = {}
-    NavData.Cache = {}
-    CurrencyData.Cache = {}
-    CreatureDisplays.Cache = {}
+	-- Clear existing caches
+	ServiceData.Cache = {}
+	LinkData.Cache = {}
+	NavData.Cache = {}
+	CurrencyData.Cache = {}
+	CreatureDisplays.Cache = {}
 
-    -- Reload all data
-    ServiceData.Load()
-    LinkData.Load()
-    NavData.Load()
-    CurrencyData.Load()
-    CreatureDisplays.Load()
+	-- Reload all data
+	ServiceData.Load()
+	LinkData.Load()
+	NavData.Load()
+	CurrencyData.Load()
+	CreatureDisplays.Load()
 end
 
 ServiceData.Load()

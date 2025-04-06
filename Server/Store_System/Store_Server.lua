@@ -17,6 +17,16 @@ local CONFIG = {
 	},
 }
 
+local FACTION_STANDING = {
+	HATED = "Hated",
+	HOSTILE = "Hostile",
+	UNFRIENDLY = "Unfriendly",
+	NEUTRAL = "Neutral",
+	FRIENDLY = "Friendly",
+	HONORED = "Honored",
+	REVERED = "Revered",
+	EXALTED = "Exalted"
+}
 --------------------
 
 local AIO = AIO or require("AIO") and require("Store_DataStruct")
@@ -213,6 +223,14 @@ end
 
 -- ITEMS
 function SHOP_UI.ItemHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+	-- print reputation requirement
+	print(data[KEYS.service.required_faction], data[KEYS.service.required_standing])
+
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	-- Deduct currency
@@ -259,6 +277,11 @@ end
 
 -- GOLD
 function SHOP_UI.GoldHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	-- Deduct currency
@@ -276,6 +299,11 @@ end
 
 -- MOUNTS
 function SHOP_UI.MountHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	local knownCount, rewardCount = 0, 0
@@ -314,6 +342,11 @@ end
 
 -- PETS
 function SHOP_UI.PetHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	local knownCount, rewardCount = 0, 0
@@ -352,6 +385,11 @@ end
 
 -- BUFFS
 function SHOP_UI.BuffHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	-- Deduct currency
@@ -373,6 +411,11 @@ end
 
 -- SERVICES
 function SHOP_UI.ServiceHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	-- Deduct currency
@@ -391,6 +434,11 @@ end
 
 -- LEVELS
 function SHOP_UI.LevelHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 	-- If flag is set to 1, then we set the player to the specified level instead of adding levels
 	-- We need to check this before deducting any money
@@ -428,6 +476,11 @@ end
 
 -- TITLES
 function SHOP_UI.TitleHandler(player, data)
+	-- Check reputation requirement first
+	if not SHOP_UI.CheckReputationRequirement(player, data) then
+		return false
+	end
+
 	local currency, amount = data[KEYS.service.currency], data[KEYS.service.price] - data[KEYS.service.discount]
 
 	-- Check whether or not the player already has the specified title
@@ -456,4 +509,79 @@ function SHOP_UI.UnusedHandler(player, data)
 
 	-- Since this is unused, always return false until the function is in use.
 	return false
+end
+
+function SHOP_UI.CheckReputationRequirement(player, data)
+    -- If no reputation requirement, return true
+    if not data[KEYS.service.required_faction] or data[KEYS.service.required_faction] == 0 then
+        return true
+    end
+
+    -- Convert reputation value to standing level
+    local currentStanding
+    local standingValue = player:GetReputation(data[KEYS.service.required_faction])
+
+    if standingValue >= 42000 then
+        currentStanding = "Exalted"
+    elseif standingValue >= 21000 then
+        currentStanding = "Revered"
+    elseif standingValue >= 9000 then
+        currentStanding = "Honored"
+    elseif standingValue >= 3000 then
+        currentStanding = "Friendly"
+    elseif standingValue >= 0 then
+        currentStanding = "Neutral"
+    elseif standingValue >= -3000 then
+        currentStanding = "Unfriendly"
+    elseif standingValue >= -6000 then
+        currentStanding = "Hostile"
+    else
+        currentStanding = "Hated"
+    end
+
+    local STANDING_LEVELS = {
+        ["Hated"] = 1,
+        ["Hostile"] = 2,
+        ["Unfriendly"] = 3,
+        ["Neutral"] = 4,
+        ["Friendly"] = 5,
+        ["Honored"] = 6,
+        ["Revered"] = 7,
+        ["Exalted"] = 8
+    }
+
+    local requiredLevel = STANDING_LEVELS[data[KEYS.service.required_standing]]
+    local currentLevel = STANDING_LEVELS[currentStanding]
+
+    -- For positive standings (Neutral through Exalted)
+    if requiredLevel >= STANDING_LEVELS["Neutral"] then
+        -- Must be at least Neutral to access positive standing items
+        if currentLevel < STANDING_LEVELS["Neutral"] then
+            player:SendAreaTriggerMessage("|cFFFF0000You need to be at least Neutral to purchase this item.|r")
+            player:PlayDirectSound(GetSoundEffect("cantUse", player:GetRace(), player:GetGender()), player)
+            return false
+        end
+        -- Can buy any item requiring your current standing or lower (down to Neutral)
+        if requiredLevel > currentLevel then
+            player:SendAreaTriggerMessage("|cFFFF0000You need higher reputation to purchase this item.|r")
+            player:PlayDirectSound(GetSoundEffect("cantUse", player:GetRace(), player:GetGender()), player)
+            return false
+        end
+        return true
+    else
+        -- For negative standings (Hated through Unfriendly)
+        -- Must be below Neutral to access negative standing items
+        if currentLevel >= STANDING_LEVELS["Neutral"] then
+            player:SendAreaTriggerMessage("|cFFFF0000Your reputation is too high to purchase this item.|r")
+            player:PlayDirectSound(GetSoundEffect("cantUse", player:GetRace(), player:GetGender()), player)
+            return false
+        end
+        -- For negative standings, you can buy items from your current standing and above
+        if requiredLevel < currentLevel then
+            player:SendAreaTriggerMessage("|cFFFF0000You need lower reputation to purchase this item.|r")
+            player:PlayDirectSound(GetSoundEffect("cantUse", player:GetRace(), player:GetGender()), player)
+            return false
+        end
+        return true
+    end
 end
